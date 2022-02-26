@@ -1,0 +1,175 @@
+
+drop table bread;
+create table bread (
+    code varchar2(6),
+    name VARCHAR2(50),
+    price NUMBER(5) not null,
+    intro VARCHAR2(50),
+    img VARCHAR2(50),
+    CONSTRAINT bread_pk PRIMARY KEY(code, name)
+);
+desc bread;
+
+insert into bread values('br001', '크림빵', 2500, '크림듬뿍', 'bread_01.jpg');
+insert into bread values('br002', '티라미슈', 5500, '사르륵사르륵', 'bread_02.jpg');
+insert into bread values('br003', '댕댕토스트', 3000, '바삭바삭', 'bread_03.jpg');
+insert into bread values('br004', '마늘빵', 3800, '마늘향듬뿍', 'bread_04.jpg');
+
+select * from bread;
+select * from bread where code='br004';
+commit;
+
+drop table bread_sale;
+create table bread_sale (
+    code VARCHAR2(6),
+    price NUMBER(5),
+    amount NUMBER(5),
+    btime Date
+);
+desc bread_sale;
+
+/* sysdate 기준 */
+insert into bread_sale values ('br001', 2500, 1, TO_DATE(SYSDATE, 'YYYY-MM-DD HH24:MI:SS'));
+
+/* 1월 23일 기준 */
+insert into bread_sale values ('br001', 2500, 1, TO_DATE('2022-01-23 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+insert into bread_sale values ('br002', 5500, 1, TO_DATE('2022-01-23 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+insert into bread_sale values ('br003', 3000, 1, TO_DATE('2022-01-23 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+insert into bread_sale values ('br004', 3800, 1, TO_DATE('2022-01-23 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+
+/* 1월 24일 기준 */
+insert into bread_sale values ('br001', 2500, 1, TO_DATE('2022-01-24 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+insert into bread_sale values ('br002', 5500, 1, TO_DATE('2022-01-24 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+insert into bread_sale values ('br003', 3000, 1, TO_DATE('2022-01-24 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+insert into bread_sale values ('br004', 3800, 1, TO_DATE('2022-01-24 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+
+/* 1월 25일 기준 */
+insert into bread_sale values ('br001', 2500, 1, TO_DATE('2022-01-25 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+insert into bread_sale values ('br002', 5500, 1, TO_DATE('2022-01-25 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+insert into bread_sale values ('br003', 3000, 1, TO_DATE('2022-01-25 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+insert into bread_sale values ('br004', 3800, 1, TO_DATE('2022-01-25 01:01:01', 'YYYY-MM-DD HH24:MI:SS'));
+
+select * from bread_sale;
+commit;
+
+/*상품코드, 수량합 */
+select code, sum(amount) as total_amount from bread_sale GROUP BY code order by total_amount desc;
+
+select * from bread_sale order by btime;
+
+select code, btime, sum(amount) as total_amount from bread_sale group by btime, code order by btime, total_amount desc;
+
+select 
+    s.code, 
+    s.btime,
+    b.name, 
+    b.price, 
+    b.intro, 
+    b.img
+from bread b 
+left outer join bread_sale s 
+on s.code = b.code;
+
+
+select * from bread;
+select * from bread_sale;
+
+/* 빵정보 테이블과 매출정보 테이블 join 시키기*/
+select
+        s.code,
+        s.btime,
+        sum(s.amount) as total,
+        b.name,
+        b.price,
+        b.intro,
+        b.img
+    from 
+        bread_sale s, bread b
+    where 
+        s.code = b.code
+    group by 
+        s.code, s.btime, b.name, b.price, b.intro, b.img;
+
+
+/* 어제(1월 23일) 매출 기준, 판매 수량의 합이 가장 큰 빵코드 출력*/
+
+
+
+drop view v_amount2;
+/* 매출 정보 view 생성 - 필요없음 */
+CREATE VIEW v_amount2 
+as
+    select 
+        s.code,
+        s.btime,
+        sum(s.amount) as total
+    from bread_sale s
+    group by code, btime
+;
+select * from v_amount2 order by btime;
+
+/*최대값 구하기*/
+select * from v_amount2 
+where 
+total = (
+    select max(total) from v_amount2
+    where btime between to_date('20220123', 'yyyy-mm-dd') 
+                    and to_date('20220124', 'yyyy-mm-dd')
+);
+
+drop view v_amount;
+/* 수량합 VIEW 생성 - 필요없음 */
+CREATE VIEW v_amount 
+as
+    select
+        s.code,
+        s.btime,
+        sum(s.amount) as total,
+        b.name,
+        b.price,
+        b.intro,
+        b.img
+    from bread_sale s, bread b
+    where s.code = b.code
+    group by s.code, s.btime, b.name, b.price, b.intro, b.img
+    ;
+    
+select * from v_amount;
+
+/*최대값 구하기*/
+select * from v_amount
+where 
+total = (
+    select max(total) from v_amount
+    where btime between to_date('20220123', 'yyyy-mm-dd') 
+                    and to_date('20220124', 'yyyy-mm-dd')
+);
+commit;
+
+
+/* 쿼리문 사용해서 어제(1월 23일) 매출 기준, 판매 수량의 합이 가장 큰 빵코드 출력*/
+select * from
+    (select
+            s.code,
+            s.btime,
+            sum(s.amount) as total,
+            b.name,
+            b.price,
+            b.intro,
+            b.img
+        from bread_sale s, bread b
+        where s.code = b.code
+        group by s.code, s.btime, b.name, b.price, b.intro, b.img
+        )
+where 
+    total = (
+        select max(total) from v_amount/*view*/
+        where btime between to_date('20220123', 'yyyy-mm-dd') 
+                        and to_date('20220124', 'yyyy-mm-dd')
+    );
+
+
+
+
+
+commit;
